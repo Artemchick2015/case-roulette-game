@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Case Roulette - Telegram Game</title>
+    <script src="https://telegram.org/js/games.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            width: 100%;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+            background: linear-gradient(45deg, #ffd700, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .balance-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 15px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+        
+        .balance-card h2 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+        
+        .balance-amount {
+            font-size: 36px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .star-icon {
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        
+        .cases-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .case {
+            background: linear-gradient(135deg, var(--case-color) 0%, rgba(0,0,0,0.3) 100%);
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .case:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .case::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .case:hover::before {
+            left: 100%;
+        }
+        
+        .case-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+        
+        .case-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .case-price {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .roulette-container {
+            width: 100%;
+            height: 180px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            display: none;
+            margin-top: 20px;
+        }
+        
+        .roulette-items {
+            display: flex;
+            position: absolute;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+        
+        .roulette-item {
+            min-width: 100px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px;
+        }
+        
+        .roulette-item-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+        
+        .roulette-item-amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+        
+        .center-line {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 100%;
+            background: #ff0000;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.7);
+            z-index: 10;
+        }
+        
+        .result-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            display: none;
+            padding: 20px;
+        }
+        
+        .result-card {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            animation: resultAppear 0.5s ease-out;
+        }
+        
+        @keyframes resultAppear {
+            0% {
+                transform: scale(0.5) rotate(-180deg);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1) rotate(0);
+                opacity: 1;
+            }
+        }
+        
+        .result-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 1s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        .result-text {
+            font-size: 24px;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+        
+        .result-amount {
+            font-size: 48px;
+            font-weight: bold;
+            color: #ffd700;
+            margin: 20px 0;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #ff6b6b, #ffa726);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(255, 107, 107, 0.3);
+        }
+        
+        .btn-buy {
+            background: linear-gradient(45deg, #4CAF50, #8BC34A);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .stats {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 15px;
+            width: 100%;
+            text-align: center;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: linear-gradient(45deg, #4CAF50, #8BC34A);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            z-index: 1001;
+            font-weight: bold;
+            transition: transform 0.5s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .notification.show {
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1002;
+            display: none;
+        }
+        
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #ffd700;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .probabilities-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .probabilities-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1003;
+            display: none;
+            padding: 20px;
+        }
+        
+        .probabilities-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 100%;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .probabilities-content h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #ffd700;
+        }
+        
+        .probability-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        @media (max-width: 480px) {
+            .cases-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .balance-amount {
+                font-size: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="probabilities-btn" onclick="showProbabilities()">ℹ️</button>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🎰 Case Roulette</h1>
+            <p>Відкривай кейси та вигравай Stars!</p>
+        </div>
+        
+        <div class="balance-card">
+            <h2>Ваш баланс</h2>
+            <div class="balance-amount">
+                <span class="star-icon">⭐</span>
+                <span id="balance">0</span>
+            </div>
+        </div>
+        
+        <div class="cases-grid" id="casesContainer">
+            <!-- Cases will be generated by JavaScript -->
+        </div>
+        
+        <div class="roulette-container" id="roulette">
+            <div class="roulette-items" id="rouletteItems"></div>
+            <div class="center-line"></div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-buy" onclick="buyStars()">Купити Stars</button>
+            <button class="btn btn-secondary" onclick="showStats()">Статистика</button>
+        </div>
+        
+        <div class="stats">
+            <div>Відкрито кейсів: <span id="casesCount">0</span></div>
+            <div>Виграно Stars: <span id="totalWon">0</span></div>
+        </div>
+    </div>
+    
+    <div class="result-overlay" id="resultOverlay">
+        <div class="result-card">
+            <div class="result-icon" id="resultIcon">🎁</div>
+            <div class="result-text" id="resultText"></div>
+            <div class="result-amount" id="resultAmount">0 ⭐</div>
+            <button class="btn" onclick="closeResult()">Грати ще</button>
+            <button class="btn btn-secondary" onclick="shareResult()">Поділитися</button>
+        </div>
+    </div>
+    
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div id="loadingText">Завантаження...</div>
+    </div>
+    
+    <div class="probabilities-modal" id="probabilitiesModal">
+        <div class="probabilities-content">
+            <h3>🎯 Шанси виграшу</h3>
+            <div id="probabilitiesList">
+                <!-- Probabilities will be generated by JavaScript -->
+            </div>
+            <button class="btn" onclick="hideProbabilities()" style="margin-top: 20px;">Закрити</button>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification"></div>
+    
+    <script src="game.js"></script>
+</body>
+</html>
