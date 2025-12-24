@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Case Roulette - Telegram Game</title>
     <script src="https://telegram.org/js/games.js"></script>
     <style>
@@ -11,6 +11,7 @@
             padding: 0;
             box-sizing: border-box;
             user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         
         body {
@@ -21,6 +22,11 @@
             padding: 20px;
             max-width: 500px;
             margin: 0 auto;
+            overflow-x: hidden;
+        }
+        
+        body::-webkit-scrollbar {
+            display: none;
         }
         
         .container {
@@ -28,6 +34,7 @@
             flex-direction: column;
             align-items: center;
             gap: 20px;
+            padding-bottom: 30px;
         }
         
         .header {
@@ -38,6 +45,7 @@
             border-radius: 20px;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-top: 10px;
         }
         
         .header h1 {
@@ -46,6 +54,7 @@
             background: linear-gradient(45deg, #ffd700, #ff6b6b);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
         
         .balance-card {
@@ -55,6 +64,25 @@
             width: 100%;
             text-align: center;
             box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .balance-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite linear;
+        }
+        
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
         }
         
         .balance-card h2 {
@@ -70,11 +98,19 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
+            position: relative;
+            z-index: 1;
         }
         
         .star-icon {
             color: #ffd700;
             text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
         }
         
         .cases-grid {
@@ -98,6 +134,7 @@
             border: 2px solid rgba(255, 255, 255, 0.1);
             position: relative;
             overflow: hidden;
+            min-height: 140px;
         }
         
         .case:hover {
@@ -202,7 +239,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.95);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -220,6 +257,8 @@
             max-width: 400px;
             width: 100%;
             animation: resultAppear 0.5s ease-out;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
         }
         
         @keyframes resultAppear {
@@ -256,6 +295,12 @@
             color: #ffd700;
             margin: 20px 0;
             text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            animation: glow 2s infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+            to { text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 215, 0, 0.6); }
         }
         
         .btn {
@@ -270,11 +315,29 @@
             transition: all 0.3s ease;
             width: 100%;
             margin-top: 10px;
+            position: relative;
+            overflow: hidden;
         }
         
         .btn:hover {
             transform: scale(1.05);
             box-shadow: 0 10px 20px rgba(255, 107, 107, 0.3);
+        }
+        
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            transition: all 0.5s ease;
+        }
+        
+        .btn:hover::after {
+            left: 100%;
         }
         
         .btn-buy {
@@ -300,6 +363,20 @@
             text-align: center;
             font-size: 14px;
             opacity: 0.8;
+            display: flex;
+            justify-content: space-around;
+        }
+        
+        .stats div {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .stats span {
+            font-weight: bold;
+            font-size: 18px;
+            color: #ffd700;
         }
         
         .notification {
@@ -315,6 +392,8 @@
             font-weight: bold;
             transition: transform 0.5s ease;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            max-width: 90%;
+            text-align: center;
         }
         
         .notification.show {
@@ -327,7 +406,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.95);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -365,6 +444,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            z-index: 10;
         }
         
         .probabilities-modal {
@@ -373,7 +453,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.95);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -395,13 +475,25 @@
             text-align: center;
             margin-bottom: 20px;
             color: #ffd700;
+            font-size: 24px;
         }
         
         .probability-item {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
+            align-items: center;
+            padding: 12px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .probability-item:last-child {
+            border-bottom: none;
+        }
+        
+        .probability-item div:first-child {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         
         @media (max-width: 480px) {
@@ -416,11 +508,79 @@
             .balance-amount {
                 font-size: 30px;
             }
+            
+            .controls {
+                flex-direction: column;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+        
+        /* Стилі для власника */
+        .owner-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            color: #000;
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1;
+            animation: ownerGlow 2s infinite alternate;
+        }
+        
+        @keyframes ownerGlow {
+            from { box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+            to { box-shadow: 0 0 20px rgba(255, 215, 0, 0.8); }
+        }
+        
+        .owner-menu {
+            display: none;
+            position: fixed;
+            top: 60px;
+            left: 10px;
+            background: rgba(0,0,0,0.9);
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            padding: 15px;
+            z-index: 1004;
+        }
+        
+        .owner-menu.show {
+            display: block;
+        }
+        
+        .owner-btn {
+            background: #FFD700;
+            color: #000;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin: 5px 0;
+            width: 100%;
+            font-weight: bold;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
     <button class="probabilities-btn" onclick="showProbabilities()">ℹ️</button>
+    
+    <!-- Бейдж для власника (показується тільки власнику) -->
+    <div id="ownerBadge" class="owner-badge" style="display: none;">👑 ВЛАСНИК</div>
+    
+    <!-- Меню для власника -->
+    <div id="ownerMenu" class="owner-menu">
+        <button class="owner-btn" onclick="window.game.addStars(1000)">+1000 Stars</button>
+        <button class="owner-btn" onclick="window.game.addStars(10000)">+10000 Stars</button>
+        <button class="owner-btn" onclick="window.game.resetStats()">Скинути статистику</button>
+        <button class="owner-btn" onclick="toggleOwnerMenu()">Закрити</button>
+    </div>
     
     <div class="container">
         <div class="header">
@@ -437,7 +597,7 @@
         </div>
         
         <div class="cases-grid" id="casesContainer">
-            <!-- Cases will be generated by JavaScript -->
+            <!-- Кейси будуть створені JavaScript -->
         </div>
         
         <div class="roulette-container" id="roulette">
@@ -446,43 +606,68 @@
         </div>
         
         <div class="controls">
-            <button class="btn btn-buy" onclick="buyStars()">Купити Stars</button>
-            <button class="btn btn-secondary" onclick="showStats()">Статистика</button>
+            <button class="btn btn-buy" onclick="buyStars()">💳 Поповнити баланс</button>
+            <button class="btn btn-secondary" onclick="showStats()">📊 Статистика</button>
         </div>
         
         <div class="stats">
-            <div>Відкрито кейсів: <span id="casesCount">0</span></div>
-            <div>Виграно Stars: <span id="totalWon">0</span></div>
+            <div>
+                <div>Відкрито кейсів</div>
+                <span id="casesCount">0</span>
+            </div>
+            <div>
+                <div>Виграно Stars</div>
+                <span id="totalWon">0</span>
+            </div>
         </div>
     </div>
     
+    <!-- Результат гри -->
     <div class="result-overlay" id="resultOverlay">
         <div class="result-card">
             <div class="result-icon" id="resultIcon">🎁</div>
             <div class="result-text" id="resultText"></div>
             <div class="result-amount" id="resultAmount">0 ⭐</div>
-            <button class="btn" onclick="closeResult()">Грати ще</button>
-            <button class="btn btn-secondary" onclick="shareResult()">Поділитися</button>
+            <button class="btn" onclick="closeResult()">🎮 Грати ще</button>
+            <button class="btn btn-secondary" onclick="shareResult()">📢 Поділитися</button>
         </div>
     </div>
     
+    <!-- Завантаження -->
     <div class="loading" id="loading">
         <div class="spinner"></div>
         <div id="loadingText">Завантаження...</div>
     </div>
     
+    <!-- Шанси виграшу -->
     <div class="probabilities-modal" id="probabilitiesModal">
         <div class="probabilities-content">
             <h3>🎯 Шанси виграшу</h3>
             <div id="probabilitiesList">
-                <!-- Probabilities will be generated by JavaScript -->
+                <!-- Шанси будуть створені JavaScript -->
             </div>
             <button class="btn" onclick="hideProbabilities()" style="margin-top: 20px;">Закрити</button>
         </div>
     </div>
     
+    <!-- Сповіщення -->
     <div class="notification" id="notification"></div>
     
     <script src="game.js"></script>
+    
+    <script>
+        // Додаткові функції для власника
+        function toggleOwnerMenu() {
+            const menu = document.getElementById('ownerMenu');
+            menu.classList.toggle('show');
+        }
+        
+        // Показуємо бейдж власника, якщо це він
+        setTimeout(() => {
+            if (window.game && window.game.isOwner) {
+                document.getElementById('ownerBadge').style.display = 'block';
+            }
+        }, 1000);
+    </script>
 </body>
 </html>
