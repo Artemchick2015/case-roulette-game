@@ -1110,6 +1110,16 @@ window.addEventListener('DOMContentLoaded', () => {
 // Експорт для глобального використання
 window.CaseRouletteGame = CaseRouletteGame;
 window.game = game;
+
+        // ЕКСТРЕНЕ ВИПРАВЛЕННЯ - примусове закриття завантаження
+setTimeout(() => {
+    const loading = document.getElementById('loadingScreen');
+    if (loading && loading.style.display !== 'none') {
+        loading.style.display = 'none';
+        console.log('⚠️ Примусово закрито завантаження');
+    }
+}, 3000); // Через 3 секунди
     </script>
 </body>
 </html>
+
