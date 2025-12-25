@@ -6,6 +6,7 @@
     <title>Case Roulette - Telegram Game</title>
     <script src="https://telegram.org/js/games.js"></script>
     <style>
+        /* СКИНУТИ ВСІ СТИЛІ */
         * {
             margin: 0;
             padding: 0;
@@ -25,167 +26,180 @@
             overflow-x: hidden;
         }
         
-        body::-webkit-scrollbar {
-            display: none;
+        /* ЕКРАН ЗАВАНТАЖЕННЯ */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            transition: opacity 0.5s ease;
         }
         
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loader {
+            width: 70px;
+            height: 70px;
+            border: 5px solid rgba(255, 215, 0, 0.3);
+            border-radius: 50%;
+            border-top-color: #ffd700;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: #ffd700;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        /* ОСНОВНИЙ КОНТЕНТ */
         .container {
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 20px;
-            padding-bottom: 30px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+        
+        .container.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
         
         .header {
             text-align: center;
             width: 100%;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 20px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            margin-top: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 20px;
         }
         
         .header h1 {
             font-size: 28px;
-            margin-bottom: 5px;
+            margin-bottom: 10px;
             background: linear-gradient(45deg, #ffd700, #ff6b6b);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
         
         .balance-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 20px;
-            border-radius: 15px;
+            padding: 25px;
+            border-radius: 20px;
             width: 100%;
             text-align: center;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .balance-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
-            transform: rotate(45deg);
-            animation: shine 3s infinite linear;
-        }
-        
-        @keyframes shine {
-            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
         }
         
         .balance-card h2 {
             font-size: 18px;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             opacity: 0.9;
         }
         
         .balance-amount {
-            font-size: 36px;
+            font-size: 42px;
             font-weight: bold;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            position: relative;
-            z-index: 1;
+            gap: 15px;
         }
         
         .star-icon {
             color: #ffd700;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
             animation: pulse 2s infinite;
         }
         
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+            50% { transform: scale(1.2); }
         }
         
         .cases-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
+            gap: 20px;
             width: 100%;
             margin-top: 10px;
         }
         
         .case {
-            background: linear-gradient(135deg, var(--case-color) 0%, rgba(0,0,0,0.3) 100%);
-            border-radius: 15px;
-            padding: 20px;
+            background: linear-gradient(135deg, var(--case-color) 0%, rgba(0,0,0,0.4) 100%);
+            border-radius: 20px;
+            padding: 25px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            border: 2px solid rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            min-height: 160px;
             position: relative;
             overflow: hidden;
-            min-height: 140px;
         }
         
         .case:hover {
             transform: translateY(-5px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
             border-color: rgba(255, 255, 255, 0.3);
         }
         
-        .case::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s ease;
-        }
-        
-        .case:hover::before {
-            left: 100%;
+        .case:active {
+            transform: translateY(-2px);
         }
         
         .case-icon {
-            font-size: 40px;
-            margin-bottom: 10px;
+            font-size: 48px;
+            margin-bottom: 15px;
         }
         
         .case-name {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: bold;
-            margin-bottom: 5px;
+            margin-bottom: 10px;
         }
         
         .case-price {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 5px 15px;
-            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 20px;
+            border-radius: 25px;
             font-weight: bold;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 8px;
+            font-size: 18px;
         }
         
+        /* РУЛЕТКА */
         .roulette-container {
             width: 100%;
-            height: 180px;
+            height: 200px;
             position: relative;
             overflow: hidden;
-            border-radius: 15px;
-            background: rgba(0, 0, 0, 0.5);
+            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.6);
             border: 3px solid rgba(255, 255, 255, 0.1);
             display: none;
             margin-top: 20px;
@@ -200,23 +214,23 @@
         }
         
         .roulette-item {
-            min-width: 100px;
+            min-width: 120px;
             height: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             border-right: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 10px;
+            padding: 15px;
         }
         
         .roulette-item-icon {
-            font-size: 40px;
-            margin-bottom: 10px;
+            font-size: 48px;
+            margin-bottom: 15px;
         }
         
         .roulette-item-amount {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
             color: #ffd700;
         }
@@ -229,225 +243,103 @@
             width: 4px;
             height: 100%;
             background: #ff0000;
-            box-shadow: 0 0 20px rgba(255, 0, 0, 0.7);
+            box-shadow: 0 0 25px rgba(255, 0, 0, 0.8);
             z-index: 10;
         }
         
-        .result-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.95);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            display: none;
-            padding: 20px;
-        }
-        
-        .result-card {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            padding: 30px;
-            border-radius: 20px;
-            text-align: center;
-            max-width: 400px;
-            width: 100%;
-            animation: resultAppear 0.5s ease-out;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-        }
-        
-        @keyframes resultAppear {
-            0% {
-                transform: scale(0.5) rotate(-180deg);
-                opacity: 0;
-            }
-            100% {
-                transform: scale(1) rotate(0);
-                opacity: 1;
-            }
-        }
-        
-        .result-icon {
-            font-size: 80px;
-            margin-bottom: 20px;
-            animation: bounce 1s infinite;
-        }
-        
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
-        }
-        
-        .result-text {
-            font-size: 24px;
-            margin-bottom: 20px;
-            line-height: 1.4;
-        }
-        
-        .result-amount {
-            font-size: 48px;
-            font-weight: bold;
-            color: #ffd700;
-            margin: 20px 0;
-            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
-            animation: glow 2s infinite alternate;
-        }
-        
-        @keyframes glow {
-            from { text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
-            to { text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 215, 0, 0.6); }
-        }
-        
-        .btn {
-            background: linear-gradient(45deg, #ff6b6b, #ffa726);
-            border: none;
-            color: white;
-            padding: 15px 30px;
-            border-radius: 25px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            width: 100%;
-            margin-top: 10px;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 10px 20px rgba(255, 107, 107, 0.3);
-        }
-        
-        .btn::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
-            transform: rotate(45deg);
-            transition: all 0.5s ease;
-        }
-        
-        .btn:hover::after {
-            left: 100%;
-        }
-        
-        .btn-buy {
-            background: linear-gradient(45deg, #4CAF50, #8BC34A);
-        }
-        
-        .btn-secondary {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-        }
-        
+        /* КНОПКИ */
         .controls {
             display: flex;
-            gap: 10px;
+            gap: 15px;
             width: 100%;
             margin-top: 20px;
         }
         
-        .stats {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
+        .btn {
+            flex: 1;
+            padding: 20px;
+            border: none;
+            color: white;
             border-radius: 15px;
-            width: 100%;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
             text-align: center;
-            font-size: 14px;
-            opacity: 0.8;
-            display: flex;
-            justify-content: space-around;
         }
         
-        .stats div {
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(-1px);
+        }
+        
+        .btn-buy {
+            background: linear-gradient(45deg, #4CAF50, #2E7D32);
+        }
+        
+        .btn-stats {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+        }
+        
+        /* СТАТИСТИКА */
+        .stats {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .stat-item {
             display: flex;
             flex-direction: column;
             align-items: center;
+            text-align: center;
         }
         
-        .stats span {
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            font-size: 22px;
             font-weight: bold;
-            font-size: 18px;
             color: #ffd700;
         }
         
+        /* СПОВІЩЕННЯ */
         .notification {
             position: fixed;
-            top: 20px;
+            top: 30px;
             left: 50%;
             transform: translateX(-50%) translateY(-100px);
             background: linear-gradient(45deg, #4CAF50, #8BC34A);
             color: white;
-            padding: 15px 30px;
-            border-radius: 10px;
+            padding: 18px 35px;
+            border-radius: 12px;
             z-index: 1001;
             font-weight: bold;
-            transition: transform 0.5s ease;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
             max-width: 90%;
             text-align: center;
+            font-size: 16px;
         }
         
         .notification.show {
             transform: translateX(-50%) translateY(0);
         }
         
-        .loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.95);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 1002;
-            display: none;
-        }
-        
-        .spinner {
-            width: 60px;
-            height: 60px;
-            border: 5px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: #ffd700;
-            animation: spin 1s ease-in-out infinite;
-            margin-bottom: 20px;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .probabilities-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-        }
-        
-        .probabilities-modal {
+        /* МОДАЛЬНІ ВІКНА */
+        .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
@@ -457,132 +349,96 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1003;
-            display: none;
+            z-index: 1000;
             padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
         }
         
-        .probabilities-content {
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .modal-content {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            padding: 30px;
-            border-radius: 20px;
-            max-width: 400px;
+            padding: 35px;
+            border-radius: 25px;
             width: 100%;
-            border: 2px solid rgba(255, 255, 255, 0.1);
+            max-width: 450px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
         }
         
-        .probabilities-content h3 {
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+        
+        .modal-header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .modal-title {
+            font-size: 28px;
             color: #ffd700;
-            font-size: 24px;
+            margin-bottom: 10px;
         }
         
-        .probability-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .probability-item:last-child {
-            border-bottom: none;
-        }
-        
-        .probability-item div:first-child {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
+        /* МОБІЛЬНІ СТИЛІ */
         @media (max-width: 480px) {
+            body {
+                padding: 15px;
+            }
+            
             .cases-grid {
                 grid-template-columns: 1fr;
+                gap: 15px;
             }
             
-            .header h1 {
-                font-size: 24px;
-            }
-            
-            .balance-amount {
-                font-size: 30px;
+            .case {
+                min-height: 140px;
+                padding: 20px;
             }
             
             .controls {
                 flex-direction: column;
             }
             
-            .stats {
-                flex-direction: column;
-                gap: 10px;
+            .btn {
+                padding: 18px;
+            }
+            
+            .balance-amount {
+                font-size: 36px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
             }
         }
         
-        /* Стилі для власника */
-        .owner-badge {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: linear-gradient(45deg, #FFD700, #FFA500);
-            color: #000;
-            padding: 5px 10px;
-            border-radius: 10px;
-            font-size: 12px;
-            font-weight: bold;
-            z-index: 1;
-            animation: ownerGlow 2s infinite alternate;
-        }
-        
-        @keyframes ownerGlow {
-            from { box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
-            to { box-shadow: 0 0 20px rgba(255, 215, 0, 0.8); }
-        }
-        
-        .owner-menu {
-            display: none;
-            position: fixed;
-            top: 60px;
-            left: 10px;
-            background: rgba(0,0,0,0.9);
-            border: 2px solid #FFD700;
-            border-radius: 10px;
-            padding: 15px;
-            z-index: 1004;
-        }
-        
-        .owner-menu.show {
-            display: block;
-        }
-        
-        .owner-btn {
-            background: #FFD700;
-            color: #000;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            margin: 5px 0;
-            width: 100%;
-            font-weight: bold;
-            cursor: pointer;
+        /* АДАПТАЦІЯ ДЛЯ ТЕЛЕГРАМ */
+        .telegram-mode {
+            /* Спеціальні стилі для Telegram */
         }
     </style>
 </head>
 <body>
-    <button class="probabilities-btn" onclick="showProbabilities()">ℹ️</button>
-    
-    <!-- Бейдж для власника (показується тільки власнику) -->
-    <div id="ownerBadge" class="owner-badge" style="display: none;">👑 ВЛАСНИК</div>
-    
-    <!-- Меню для власника -->
-    <div id="ownerMenu" class="owner-menu">
-        <button class="owner-btn" onclick="window.game.addStars(1000)">+1000 Stars</button>
-        <button class="owner-btn" onclick="window.game.addStars(10000)">+10000 Stars</button>
-        <button class="owner-btn" onclick="window.game.resetStats()">Скинути статистику</button>
-        <button class="owner-btn" onclick="toggleOwnerMenu()">Закрити</button>
+    <!-- ЕКРАН ЗАВАНТАЖЕННЯ -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loader"></div>
+        <div class="loading-text">Завантаження Case Roulette...</div>
+        <div style="margin-top: 30px; color: rgba(255,255,255,0.5); font-size: 14px;">
+            Telegram Mini App
+        </div>
     </div>
     
-    <div class="container">
+    <!-- ОСНОВНИЙ ІНТЕРФЕЙС -->
+    <div class="container" id="mainContainer">
         <div class="header">
             <h1>🎰 Case Roulette</h1>
             <p>Відкривай кейси та вигравай Stars!</p>
@@ -597,77 +453,663 @@
         </div>
         
         <div class="cases-grid" id="casesContainer">
-            <!-- Кейси будуть створені JavaScript -->
+            <!-- Кейси будуть додані через JavaScript -->
         </div>
         
-        <div class="roulette-container" id="roulette">
+        <div class="roulette-container" id="rouletteContainer">
             <div class="roulette-items" id="rouletteItems"></div>
             <div class="center-line"></div>
         </div>
         
         <div class="controls">
-            <button class="btn btn-buy" onclick="buyStars()">💳 Поповнити баланс</button>
-            <button class="btn btn-secondary" onclick="showStats()">📊 Статистика</button>
+            <button class="btn btn-buy" onclick="game.showPaymentModal()">💳 Поповнити баланс</button>
+            <button class="btn btn-stats" onclick="game.showStats()">📊 Статистика</button>
         </div>
         
         <div class="stats">
-            <div>
-                <div>Відкрито кейсів</div>
-                <span id="casesCount">0</span>
+            <div class="stat-item">
+                <div class="stat-label">Відкрито кейсів</div>
+                <div class="stat-value" id="casesCount">0</div>
             </div>
-            <div>
-                <div>Виграно Stars</div>
-                <span id="totalWon">0</span>
+            <div class="stat-item">
+                <div class="stat-label">Виграно Stars</div>
+                <div class="stat-value" id="totalWon">0</div>
             </div>
         </div>
     </div>
     
-    <!-- Результат гри -->
-    <div class="result-overlay" id="resultOverlay">
-        <div class="result-card">
-            <div class="result-icon" id="resultIcon">🎁</div>
-            <div class="result-text" id="resultText"></div>
-            <div class="result-amount" id="resultAmount">0 ⭐</div>
-            <button class="btn" onclick="closeResult()">🎮 Грати ще</button>
-            <button class="btn btn-secondary" onclick="shareResult()">📢 Поділитися</button>
-        </div>
-    </div>
-    
-    <!-- Завантаження -->
-    <div class="loading" id="loading">
-        <div class="spinner"></div>
-        <div id="loadingText">Завантаження...</div>
-    </div>
-    
-    <!-- Шанси виграшу -->
-    <div class="probabilities-modal" id="probabilitiesModal">
-        <div class="probabilities-content">
-            <h3>🎯 Шанси виграшу</h3>
-            <div id="probabilitiesList">
-                <!-- Шанси будуть створені JavaScript -->
+    <!-- МОДАЛЬНЕ ВІКНО ОПЛАТИ -->
+    <div class="modal-overlay" id="paymentModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">💰 Поповнення балансу</div>
+                <p>Виберіть кількість Telegram Stars</p>
             </div>
-            <button class="btn" onclick="hideProbabilities()" style="margin-top: 20px;">Закрити</button>
+            
+            <div style="margin-bottom: 25px;">
+                <input type="number" id="starsAmount" 
+                       min="10" max="5000" value="100" step="10"
+                       style="width: 100%;
+                              padding: 20px;
+                              border: 2px solid rgba(255,215,0,0.4);
+                              background: rgba(0,0,0,0.6);
+                              color: #ffd700;
+                              border-radius: 12px;
+                              font-size: 22px;
+                              text-align: center;
+                              font-weight: bold;
+                              margin-bottom: 15px;">
+                
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                    <button onclick="game.setPaymentAmount(50)" class="btn" style="background: #667eea;">50 ⭐</button>
+                    <button onclick="game.setPaymentAmount(100)" class="btn" style="background: #667eea;">100 ⭐</button>
+                    <button onclick="game.setPaymentAmount(500)" class="btn" style="background: #667eea;">500 ⭐</button>
+                    <button onclick="game.setPaymentAmount(1000)" class="btn" style="background: #667eea;">1000 ⭐</button>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 25px 0; padding: 20px; background: rgba(255,215,0,0.1); border-radius: 12px;">
+                <div style="font-size: 14px; opacity: 0.8;">Приблизна вартість:</div>
+                <div style="font-size: 32px; font-weight: bold; color: #ffd700; margin: 10px 0;">
+                    <span id="usdAmount">~$1.00</span> USD
+                </div>
+                <div style="font-size: 13px; opacity: 0.6;">
+                    1 Telegram Star ≈ $0.01
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 12px;">
+                <button onclick="game.processPayment()" class="btn btn-buy" style="flex: 1;">
+                    💳 Створити чек
+                </button>
+                <button onclick="game.closePaymentModal()" class="btn" style="flex: 1; background: rgba(255,255,255,0.1);">
+                    Скасувати
+                </button>
+            </div>
         </div>
     </div>
     
-    <!-- Сповіщення -->
+    <!-- СПОВІЩЕННЯ -->
     <div class="notification" id="notification"></div>
     
-    <script src="game.js"></script>
-    
+    <!-- ОСНОВНИЙ КОД ГРИ -->
     <script>
-        // Додаткові функції для власника
-        function toggleOwnerMenu() {
-            const menu = document.getElementById('ownerMenu');
-            menu.classList.toggle('show');
+// ================== CASE ROULETTE GAME ==================
+// Повністю оновлена версія для миттєвого запуску
+
+class CaseRouletteGame {
+    constructor() {
+        console.log('🎮 Створення екземпляра гри...');
+        
+        // Основні властивості
+        this.balance = 0;
+        this.totalWon = 0;
+        this.casesOpened = 0;
+        this.isSpinning = false;
+        this.user = null;
+        this.isOwner = false;
+        this.paymentAmount = 100;
+        
+        // Швидкий запуск
+        this.initializeGame();
+    }
+    
+    // ================== ШВИДКА ІНІЦІАЛІЗАЦІЯ ==================
+    
+    async initializeGame() {
+        console.log('⚡ Швидка ініціалізація...');
+        
+        try {
+            // 1. Приховуємо завантаження ВІДРАЗУ
+            this.hideLoading();
+            
+            // 2. Ініціалізуємо Telegram (асинхронно)
+            setTimeout(() => this.initTelegram(), 100);
+            
+            // 3. Завантажуємо дані користувача
+            setTimeout(() => this.loadUserData(), 200);
+            
+            // 4. Рендеримо інтерфейс (відразу!)
+            setTimeout(() => this.renderInterface(), 300);
+            
+            // 5. Показуємо інтерфейс
+            setTimeout(() => this.showInterface(), 500);
+            
+            console.log('✅ Гра ініціалізована');
+            
+        } catch (error) {
+            console.error('❌ Помилка ініціалізації:', error);
+            this.showError('Помилка завантаження. Спробуйте оновити сторінку.');
+        }
+    }
+    
+    // Ініціалізація Telegram WebApp
+    async initTelegram() {
+        try {
+            if (window.Telegram && Telegram.WebApp) {
+                console.log('📱 Telegram WebApp знайдено');
+                
+                Telegram.WebApp.ready();
+                Telegram.WebApp.expand();
+                
+                const initData = Telegram.WebApp.initDataUnsafe;
+                this.user = initData?.user || null;
+                
+                // Перевірка чи це власник
+                if (this.user && (this.user.id === 6662507956 || this.user.username === 'Artemchixst')) {
+                    this.isOwner = true;
+                    console.log('👑 Власник гри виявлений!');
+                }
+                
+                // Слухаємо події оплати
+                Telegram.WebApp.onEvent('invoiceClosed', (event) => {
+                    this.handlePayment(event);
+                });
+                
+            } else {
+                console.log('🔧 Режим розробки (без Telegram)');
+                this.user = { id: 123456, username: 'test_user' };
+            }
+            
+        } catch (error) {
+            console.warn('Telegram WebApp не доступний:', error);
+        }
+    }
+    
+    // Завантаження даних користувача
+    async loadUserData() {
+        try {
+            // Для власника - безкоштовні зірки
+            if (this.isOwner) {
+                this.balance = 999999;
+                console.log('👑 Власнику нараховано 999,999 Stars');
+                return;
+            }
+            
+            // Перевіряємо localStorage
+            const savedData = localStorage.getItem('case_roulette_data');
+            
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                this.balance = data.balance || 0;
+                this.totalWon = data.totalWon || 0;
+                this.casesOpened = data.casesOpened || 0;
+                console.log('📁 Дані завантажено з localStorage');
+            } else {
+                // Новий користувач - бонус
+                this.balance = 10;
+                this.saveUserData();
+                this.showNotification('🎁 Ласкаво просимо! Ви отримали 10 бонусних Stars!');
+                console.log('👤 Новий користувач, бонус: 10 Stars');
+            }
+            
+        } catch (error) {
+            console.error('Помилка завантаження даних:', error);
+            this.balance = 10;
+        }
+    }
+    
+    // Збереження даних
+    saveUserData() {
+        if (this.isOwner) return; // Власнику не зберігаємо
+        
+        const data = {
+            balance: this.balance,
+            totalWon: this.totalWon,
+            casesOpened: this.casesOpened,
+            timestamp: Date.now()
+        };
+        
+        localStorage.setItem('case_roulette_data', JSON.stringify(data));
+    }
+    
+    // ================== ІНТЕРФЕЙС ==================
+    
+    // Приховуємо екран завантаження
+    hideLoading() {
+        const loadingScreen = document.getElementById('loadingScreen');
+        if (loadingScreen) {
+            loadingScreen.classList.add('hidden');
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+            }, 500);
+        }
+    }
+    
+    // Показуємо основний інтерфейс
+    showInterface() {
+        const container = document.getElementById('mainContainer');
+        if (container) {
+            container.classList.add('visible');
         }
         
-        // Показуємо бейдж власника, якщо це він
+        // Оновлюємо баланс
+        this.updateBalance();
+    }
+    
+    // Рендер інтерфейсу
+    renderInterface() {
+        this.renderCases();
+        this.updateStats();
+    }
+    
+    // Рендер кейсів
+    renderCases() {
+        const container = document.getElementById('casesContainer');
+        if (!container) return;
+        
+        const cases = [
+            { id: 1, name: 'Звичайний', price: 1, icon: '🎁', color: '#FF6B6B' },
+            { id: 2, name: 'Рідкісний', price: 3, icon: '📦', color: '#4ECDC4' },
+            { id: 3, name: 'Епічний', price: 5, icon: '💼', color: '#9B59B6' },
+            { id: 4, name: 'Легендарний', price: 10, icon: '👑', color: '#FFD700' }
+        ];
+        
+        let html = '';
+        cases.forEach(caseItem => {
+            html += `
+                <div class="case" 
+                     style="--case-color: ${caseItem.color}"
+                     onclick="game.openCase(${caseItem.id}, ${caseItem.price})">
+                    <div class="case-icon">${caseItem.icon}</div>
+                    <div class="case-name">${caseItem.name}</div>
+                    <div class="case-price">
+                        <span class="star-icon">⭐</span>${caseItem.price}
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    // ================== ГЕЙМПЛЕЙ ==================
+    
+    // Відкриття кейса
+    openCase(caseId, price) {
+        if (this.isSpinning) return;
+        
+        // Перевірка балансу
+        if (this.balance < price) {
+            this.showNotification(`Недостатньо Stars! Потрібно ${price} ⭐`);
+            this.showPaymentModal();
+            return;
+        }
+        
+        // Починаємо обертання
+        this.isSpinning = true;
+        
+        // Віднімаємо кошти
+        this.balance -= price;
+        this.casesOpened++;
+        this.updateBalance();
+        this.updateStats();
+        this.saveUserData();
+        
+        // Показуємо рулетку
+        this.showRoulette();
+        
+        // Розраховуємо виграш
+        const winAmount = this.calculateWin(price);
+        
+        // Симулюємо обертання рулетки
         setTimeout(() => {
-            if (window.game && window.game.isOwner) {
-                document.getElementById('ownerBadge').style.display = 'block';
+            this.hideRoulette();
+            this.isSpinning = false;
+            
+            if (winAmount > 0) {
+                // Виграш
+                this.balance += winAmount;
+                this.totalWon += winAmount;
+                this.updateBalance();
+                this.updateStats();
+                this.saveUserData();
+                
+                this.showNotification(`🎉 Вітаємо! Ви виграли ${winAmount} Stars!`);
+                this.createConfetti();
+            } else {
+                // Програш
+                this.showNotification('😔 Наступного разу пощастить!');
             }
-        }, 1000);
+            
+        }, 3000);
+    }
+    
+    // Розрахунок виграшу
+    calculateWin(price) {
+        const random = Math.random();
+        
+        if (random < 0.01) return price * 10;      // 1% - джекпот
+        if (random < 0.06) return price * 3;       // 5% - великий виграш
+        if (random < 0.16) return price * 2;       // 10% - середній виграш
+        if (random < 0.66) return price * 1;       // 50% - малий виграш
+        
+        return 0; // 34% - без виграшу
+    }
+    
+    // Показ рулетки
+    showRoulette() {
+        const container = document.getElementById('rouletteContainer');
+        const items = document.getElementById('rouletteItems');
+        
+        if (!container || !items) return;
+        
+        // Генеруємо елементи рулетки
+        let html = '';
+        for (let i = 0; i < 20; i++) {
+            const amounts = [0, 1, 2, 3, 5, 10, 20, 50, 100];
+            const amount = amounts[Math.floor(Math.random() * amounts.length)];
+            const icons = ['💰', '💎', '🔮', '⭐', '🎁', '👑'];
+            const icon = icons[Math.floor(Math.random() * icons.length)];
+            
+            html += `
+                <div class="roulette-item">
+                    <div class="roulette-item-icon">${icon}</div>
+                    <div class="roulette-item-amount">${amount}</div>
+                </div>
+            `;
+        }
+        
+        items.innerHTML = html;
+        container.style.display = 'block';
+        
+        // Анімація
+        setTimeout(() => {
+            items.style.transform = 'translateX(-800px)';
+            items.style.transition = 'transform 3s cubic-bezier(0.2, 0.8, 0.3, 1)';
+        }, 100);
+    }
+    
+    // Приховування рулетки
+    hideRoulette() {
+        const container = document.getElementById('rouletteContainer');
+        if (container) {
+            container.style.display = 'none';
+            
+            // Скидаємо анімацію
+            const items = document.getElementById('rouletteItems');
+            if (items) {
+                items.style.transform = 'translateX(0)';
+                items.style.transition = 'none';
+            }
+        }
+    }
+    
+    // ================== ОПЛАТА ==================
+    
+    // Показ модального вікна оплати
+    showPaymentModal() {
+        // Для власника - безкоштовно
+        if (this.isOwner) {
+            this.balance += 1000;
+            this.updateBalance();
+            this.showNotification('👑 Власнику нараховано 1000 Stars безкоштовно!');
+            this.createConfetti();
+            return;
+        }
+        
+        const modal = document.getElementById('paymentModal');
+        if (modal) {
+            modal.classList.add('active');
+            
+            // Оновлюємо USD еквівалент
+            this.updateUsdAmount();
+            
+            // Фокус на інпут
+            setTimeout(() => {
+                const input = document.getElementById('starsAmount');
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }, 100);
+        }
+    }
+    
+    // Закриття модального вікна
+    closePaymentModal() {
+        const modal = document.getElementById('paymentModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    }
+    
+    // Встановлення суми оплати
+    setPaymentAmount(amount) {
+        const input = document.getElementById('starsAmount');
+        if (input) {
+            input.value = amount;
+            this.updateUsdAmount();
+        }
+    }
+    
+    // Оновлення USD еквіваленту
+    updateUsdAmount() {
+        const input = document.getElementById('starsAmount');
+        const usdElement = document.getElementById('usdAmount');
+        
+        if (input && usdElement) {
+            const amount = parseInt(input.value) || 100;
+            const usd = (amount * 0.01).toFixed(2);
+            usdElement.textContent = `~$${usd}`;
+        }
+    }
+    
+    // Обробка оплати
+    async processPayment() {
+        const input = document.getElementById('starsAmount');
+        if (!input) return;
+        
+        const amount = parseInt(input.value) || 100;
+        
+        // Валідація
+        if (amount < 10) {
+            this.showNotification('❌ Мінімальна сума: 10 Stars');
+            return;
+        }
+        
+        if (amount > 5000) {
+            this.showNotification('❌ Максимальна сума: 5,000 Stars');
+            return;
+        }
+        
+        // Закриваємо модальне вікно
+        this.closePaymentModal();
+        
+        // Для власника - безкоштовно
+        if (this.isOwner) {
+            this.balance += amount;
+            this.updateBalance();
+            this.showNotification(`👑 Власнику нараховано ${amount} Stars безкоштовно!`);
+            this.createConfetti();
+            return;
+        }
+        
+        // Перевірка Telegram WebApp
+        if (!window.Telegram?.WebApp) {
+            this.showNotification('⚠️ Оплата доступна тільки в Telegram');
+            return;
+        }
+        
+        try {
+            // Створюємо платіжний чек
+            Telegram.WebApp.openInvoice({
+                title: `Case Roulette - ${amount} Stars`,
+                description: `Поповнення балансу в грі Case Roulette`,
+                currency: 'XTR',
+                prices: [{ label: `${amount} Telegram Stars`, amount: amount }],
+                payload: `payment_${Date.now()}_${Math.random()}`,
+                provider_token: "", // Пусто для Telegram Stars
+                photo_url: 'https://xstgifts.vercel.app/star-icon.png',
+                photo_size: 256,
+                photo_width: 256,
+                photo_height: 256
+            });
+            
+            console.log('💰 Платіжний чек створено');
+            
+        } catch (error) {
+            console.error('❌ Помилка створення чеку:', error);
+            this.showNotification('❌ Помилка створення платежу');
+        }
+    }
+    
+    // Обробка результату оплати
+    handlePayment(event) {
+        console.log('💳 Результат оплати:', event);
+        
+        if (!event) return;
+        
+        switch (event.status) {
+            case 'paid':
+                const amount = event.amount || this.paymentAmount || 100;
+                this.balance += amount;
+                this.updateBalance();
+                this.saveUserData();
+                this.showNotification(`🎉 Оплата успішна! +${amount} Stars`);
+                this.createConfetti();
+                break;
+                
+            case 'failed':
+                this.showNotification('❌ Оплата не вдалася');
+                break;
+                
+            case 'cancelled':
+                this.showNotification('🚫 Оплату скасовано');
+                break;
+        }
+    }
+    
+    // ================== ДОПОМІЖНІ ФУНКЦІЇ ==================
+    
+    // Оновлення балансу
+    updateBalance() {
+        const balanceElement = document.getElementById('balance');
+        if (balanceElement) {
+            balanceElement.textContent = this.balance.toLocaleString();
+            
+            // Для власника додаємо корону
+            if (this.isOwner) {
+                balanceElement.innerHTML = `👑 ${this.balance.toLocaleString()}`;
+            }
+        }
+    }
+    
+    // Оновлення статистики
+    updateStats() {
+        const casesCount = document.getElementById('casesCount');
+        const totalWon = document.getElementById('totalWon');
+        
+        if (casesCount) casesCount.textContent = this.casesOpened;
+        if (totalWon) totalWon.textContent = this.totalWon;
+    }
+    
+    // Показ статистики
+    showStats() {
+        const stats = `
+🎰 *CASE ROULETTE - СТАТИСТИКА*
+
+💰 Баланс: ${this.balance} Stars
+🎁 Відкрито кейсів: ${this.casesOpened}
+🏆 Виграно всього: ${this.totalWon} Stars
+📈 Середній виграш: ${this.casesOpened > 0 ? (this.totalWon / this.casesOpened).toFixed(1) : 0} Stars
+
+${this.isOwner ? '👑 Ви власник гри!' : '🎮 Гарної гри!'}
+        `;
+        
+        if (window.Telegram?.WebApp) {
+            Telegram.WebApp.showAlert(stats);
+        } else {
+            alert(stats);
+        }
+    }
+    
+    // Показ сповіщення
+    showNotification(message) {
+        const notification = document.getElementById('notification');
+        if (!notification) return;
+        
+        notification.textContent = message;
+        notification.classList.add('show');
+        
+        setTimeout(() => {
+            notification.classList.remove('show');
+        }, 3000);
+    }
+    
+    // Показ помилки
+    showError(message) {
+        this.showNotification(`❌ ${message}`);
+    }
+    
+    // Створення конфетті
+    createConfetti() {
+        const colors = ['#ffd700', '#ff6b6b', '#4ecdc4', '#9b59b6'];
+        const icons = ['⭐', '🎉', '✨', '🎊'];
+        
+        for (let i = 0; i < 20; i++) {
+            setTimeout(() => {
+                const confetti = document.createElement('div');
+                confetti.innerHTML = icons[Math.floor(Math.random() * icons.length)];
+                confetti.style.position = 'fixed';
+                confetti.style.fontSize = '24px';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.top = '-50px';
+                confetti.style.zIndex = '9999';
+                confetti.style.pointerEvents = 'none';
+                confetti.style.color = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.textShadow = '0 0 10px currentColor';
+                
+                document.body.appendChild(confetti);
+                
+                // Анімація
+                const animation = confetti.animate([
+                    { transform: 'translateY(0) rotate(0deg)', opacity: 1 },
+                    { transform: `translateY(${window.innerHeight}px) rotate(${Math.random() * 360}deg)`, opacity: 0 }
+                ], {
+                    duration: 2000 + Math.random() * 1000,
+                    easing: 'cubic-bezier(0.215, 0.610, 0.355, 1)'
+                });
+                
+                animation.onfinish = () => confetti.remove();
+            }, i * 100);
+        }
+    }
+}
+
+// ================== ГЛОБАЛЬНИЙ ОБ'ЄКТ ГРИ ==================
+
+let game = null;
+
+// Ініціалізація при завантаженні сторінки
+window.addEventListener('DOMContentLoaded', () => {
+    console.log('📄 DOM завантажено, запускаємо гру...');
+    
+    // Швидкий запуск гри
+    game = new CaseRouletteGame();
+    
+    // Додаємо обробники подій для інпуту оплати
+    const starsInput = document.getElementById('starsAmount');
+    if (starsInput) {
+        starsInput.addEventListener('input', () => {
+            if (game) game.updateUsdAmount();
+        });
+    }
+    
+    // Налаштування кнопки закриття модального вікна
+    const paymentModal = document.getElementById('paymentModal');
+    if (paymentModal) {
+        paymentModal.addEventListener('click', (e) => {
+            if (e.target === paymentModal) {
+                game.closePaymentModal();
+            }
+        });
+    }
+});
+
+// Експорт для глобального використання
+window.CaseRouletteGame = CaseRouletteGame;
+window.game = game;
     </script>
 </body>
 </html>
