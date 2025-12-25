@@ -14,9 +14,9 @@ const CONFIG = {
         { id: 3, name: 'Епічний', price: 5, icon: '💼', color: '#9B59B6', multiplier: 3 },
         { id: 4, name: 'Легендарний', price: 10, icon: '👑', color: '#FFD700', multiplier: 5 }
     ],
-    OWNER_ID: 6662507956, // Ваш ID
+    OWNER_ID: 6662507956,
     OWNER_USERNAME: 'Artemchixst',
-    API_URL: 'https://xstgifts-backend.vercel.app/api' // Ваш бекенд
+    BOT_TOKEN: '8423883790:AAFemxHm60UVaSUKDjRwuoIUivQLp-ExzaQ' // Ваш токен
 };
 
 // Основний клас гри
@@ -29,6 +29,7 @@ class CaseRouletteGame {
         this.user = null;
         this.isOwner = false;
         this.paymentAmount = 0;
+        this.paymentPayload = null;
         
         this.init();
     }
@@ -60,25 +61,432 @@ class CaseRouletteGame {
                 this.user = initData.user;
                 
                 // Перевірка чи це власник
-                if (this.user.id === CONFIG.OWNER_ID || 
-                    this.user.username === CONFIG.OWNER_USERNAME) {
+                if (this.user && (this.user.id === CONFIG.OWNER_ID || 
+                    this.user.username === CONFIG.OWNER_USERNAME)) {
                     this.isOwner = true;
                     console.log('👑 Власник гри зайшов!');
                 }
                 
-                // Слухаємо події оплати
+                // Слухаємо події оплати WebApp
                 Telegram.WebApp.onEvent('invoiceClosed', this.handlePayment.bind(this));
+                
+                console.log('Telegram WebApp ініціалізовано:', this.user);
                 
             } catch (error) {
                 console.error('Telegram init error:', error);
                 this.user = { id: 0, username: 'test' };
             }
         } else {
-            console.log('Development mode');
+            console.log('Development mode - no Telegram WebApp');
             this.user = { id: 0, username: 'test' };
             this.balance = 100;
         }
     }
+    
+    // ================== СИСТЕМА ОПЛАТИ ==================
+    
+    // Функція показу модального вікна для оплати
+    showPaymentModal() {
+        const existingModal = document.getElementById('paymentModal');
+        if (existingModal) existingModal.remove();
+        
+        const modal = document.createElement('div');
+        modal.id = 'paymentModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.97);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            padding: 20px;
+        `;
+        
+        modal.innerHTML = `
+            <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                       padding: 30px;
+                       border-radius: 20px;
+                       width: 100%;
+                       max-width: 420px;
+                       border: 2px solid rgba(255,215,0,0.3);
+                       box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+                       position: relative;">
+                
+                <button onclick="window.game.closePaymentModal()" 
+                        style="position: absolute; top: 15px; right: 15px; 
+                               background: none; border: none; color: white; 
+                               font-size: 24px; cursor: pointer;">×</button>
+                
+                <h2 style="text-align: center; margin-bottom: 25px; color: #ffd700; font-size: 26px;">
+                    💰 Поповнення балансу
+                </h2>
+                
+                <div style="margin-bottom: 25px;">
+                    <label style="display: block; margin-bottom: 12px; opacity: 0.9; font-size: 16px;">
+                        Скільки Telegram Stars ви хочете внести?
+                    </label>
+                    <input type="number" id="starsAmount" 
+                           min="10" max="5000" value="100" step="10"
+                           style="width: 100%;
+                                  padding: 18px;
+                                  border: 2px solid rgba(255,215,0,0.4);
+                                  background: rgba(0,0,0,0.7);
+                                  color: #ffd700;
+                                  border-radius: 12px;
+                                  font-size: 22px;
+                                  text-align: center;
+                                  font-weight: bold;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px;">
+                        <button onclick="setPaymentAmount(50)" style="padding: 12px; background: linear-gradient(45deg, #667eea, #764ba2); border: none; color: white; border-radius: 8px; font-size: 14px; font-weight: bold;">50 ⭐</button>
+                        <button onclick="setPaymentAmount(100)" style="padding: 12px; background: linear-gradient(45deg, #667eea, #764ba2); border: none; color: white; border-radius: 8px; font-size: 14px; font-weight: bold;">100 ⭐</button>
+                        <button onclick="setPaymentAmount(500)" style="padding: 12px; background: linear-gradient(45deg, #667eea, #764ba2); border: none; color: white; border-radius: 8px; font-size: 14px; font-weight: bold;">500 ⭐</button>
+                        <button onclick="setPaymentAmount(1000)" style="padding: 12px; background: linear-gradient(45deg, #667eea, #764ba2); border: none; color: white; border-radius: 8px; font-size: 14px; font-weight: bold;">1000 ⭐</button>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin: 25px 0; padding: 20px; background: rgba(255,215,0,0.15); border-radius: 12px; border: 1px solid rgba(255,215,0,0.3);">
+                    <div style="font-size: 14px; opacity: 0.8; margin-bottom: 5px;">Приблизна вартість:</div>
+                    <div style="font-size: 32px; font-weight: bold; color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.5);">
+                        <span id="usdAmount">~$1.00</span> USD
+                    </div>
+                    <div style="font-size: 13px; opacity: 0.6; margin-top: 8px;">
+                        1 Telegram Star = $0.01
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 12px; margin-top: 25px;">
+                    <button onclick="window.game.createTelegramInvoice()" 
+                            style="flex: 1; 
+                                   padding: 18px; 
+                                   background: linear-gradient(45deg, #4CAF50, #2E7D32);
+                                   border: none; 
+                                   color: white; 
+                                   border-radius: 12px; 
+                                   font-size: 18px; 
+                                   font-weight: bold;
+                                   cursor: pointer;
+                                   transition: all 0.3s;
+                                   box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);">
+                        💳 Створити чек
+                    </button>
+                    <button onclick="window.game.closePaymentModal()" 
+                            style="flex: 1; 
+                                   padding: 18px; 
+                                   background: rgba(255,255,255,0.1);
+                                   border: 2px solid rgba(255,255,255,0.3);
+                                   color: white; 
+                                   border-radius: 12px; 
+                                   font-size: 18px;
+                                   cursor: pointer;
+                                   transition: all 0.3s;">
+                        Скасувати
+                    </button>
+                </div>
+                
+                <div style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 10px; font-size: 13px; opacity: 0.7; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
+                    ⚡ Оплата через Telegram Stars. Після оплати зірки автоматично з'являться у грі.
+                </div>
+                
+                <!-- Індикатор для власника -->
+                ${this.isOwner ? '<div style="margin-top: 15px; padding: 10px; background: rgba(255,215,0,0.1); border-radius: 8px; text-align: center; font-size: 12px; color: #ffd700;">👑 Ви власник - отримаєте зірки безкоштовно</div>' : ''}
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Оновлюємо USD еквівалент
+        const starsInput = document.getElementById('starsAmount');
+        const usdAmount = document.getElementById('usdAmount');
+        
+        const updateUsd = () => {
+            const stars = parseInt(starsInput.value) || 0;
+            const usd = (stars * 0.01).toFixed(2);
+            usdAmount.textContent = `~$${usd}`;
+        };
+        
+        starsInput.addEventListener('input', updateUsd);
+        starsInput.addEventListener('change', updateUsd);
+        
+        // Початкове значення
+        updateUsd();
+        
+        // Фокус на інпут
+        setTimeout(() => {
+            if (starsInput) starsInput.focus();
+            starsInput.select();
+        }, 100);
+    }
+    
+    // Головна функція створення чеку
+    async createTelegramInvoice() {
+        const starsInput = document.getElementById('starsAmount');
+        if (!starsInput) {
+            this.showNotification('❌ Помилка: поле для вводу не знайдено');
+            return;
+        }
+        
+        const amount = parseInt(starsInput.value);
+        
+        if (!amount || amount < 10) {
+            this.showNotification('❌ Мінімальна сума: 10 Stars');
+            return;
+        }
+        
+        if (amount > 5000) {
+            this.showNotification('❌ Максимальна сума: 5,000 Stars');
+            return;
+        }
+        
+        this.paymentAmount = amount;
+        this.paymentPayload = `payment_${this.user?.id || 'guest'}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        console.log('🔄 Створення чеку на', amount, 'Stars, payload:', this.paymentPayload);
+        
+        // Для власника - безкоштовне поповнення
+        if (this.isOwner) {
+            this.closePaymentModal();
+            this.showLoading('👑 Отримуємо зірки безкоштовно...');
+            
+            setTimeout(() => {
+                this.balance += amount;
+                this.updateUI();
+                this.saveUserData();
+                this.hideLoading();
+                this.showNotification(`👑 Власник отримав ${amount} Stars безкоштовно!`);
+                this.createConfetti();
+                
+                // Повідомлення про успіх
+                if (window.Telegram?.WebApp) {
+                    Telegram.WebApp.showAlert(`✅ Отримано ${amount} Stars!\n\n👑 Ви власник гри, тому зірки нараховані безкоштовно.`);
+                }
+            }, 1500);
+            return;
+        }
+        
+        // Перевірка чи ми в Telegram WebApp
+        if (!window.Telegram?.WebApp) {
+            this.closePaymentModal();
+            this.showNotification('⚠️ Оплата доступна тільки в Telegram');
+            alert('Для тестування оплати запустіть гру через Telegram бота:\nhttps://t.me/xstgifts_bot');
+            return;
+        }
+        
+        try {
+            // ВАЖЛИВО: Правильні параметри для Telegram Stars
+            const invoiceParams = {
+                title: `Case Roulette | ${amount} Stars`,
+                description: `Поповнення балансу в грі Case Roulette. Після оплати ${amount} Telegram Stars будуть додані до вашого балансу.`,
+                currency: 'XTR', // Валюта Telegram Stars
+                prices: [
+                    {
+                        label: `${amount} Telegram Stars`,
+                        amount: amount // 1 Star = 1 одиниця валюти XTR
+                    }
+                ],
+                payload: this.paymentPayload,
+                // provider_token: "", // ДЛЯ TELEGRAM STARS ЗАЛИШАЄМО ПУСТИМ АБО ВИДАЛЯЄМО
+                photo_url: 'https://xstgifts.vercel.app/star-icon.png',
+                photo_size: 256,
+                photo_width: 256,
+                photo_height: 256,
+                need_name: false,
+                need_phone_number: false,
+                need_email: false,
+                need_shipping_address: false,
+                is_flexible: false,
+                send_phone_number_to_provider: false,
+                send_email_to_provider: false
+            };
+            
+            console.log('📱 Відкриваємо чек з параметрами:', invoiceParams);
+            
+            // Відкриваємо платіжну форму
+            Telegram.WebApp.openInvoice(invoiceParams);
+            
+            this.closePaymentModal();
+            
+        } catch (error) {
+            console.error('❌ Критична помилка створення чеку:', error);
+            this.showNotification('❌ Помилка створення чеку. Спробуйте ще раз.');
+            
+            // Альтернативний спосіб через Bot API
+            this.tryAlternativePayment(amount);
+        }
+    }
+    
+    // Альтернативний спосіб оплати через Bot API
+    async tryAlternativePayment(amount) {
+        console.log('🔄 Спробуємо альтернативний спосіб оплати...');
+        
+        // Якщо у нас є токен бота, можемо спробувати через Bot API
+        if (CONFIG.BOT_TOKEN && this.user?.id) {
+            try {
+                // Відправляємо запит на наш сервер для створення чеку
+                const response = await fetch('https://api.telegram.org/bot' + CONFIG.BOT_TOKEN + '/sendInvoice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: this.user.id,
+                        title: `Case Roulette | ${amount} Stars`,
+                        description: `Поповнення балансу в грі Case Roulette`,
+                        payload: `payment_${this.user.id}_${Date.now()}`,
+                        provider_token: "", // Пусто для Telegram Stars
+                        currency: 'XTR',
+                        prices: [{ label: `${amount} Stars`, amount: amount }],
+                        photo_url: 'https://xstgifts.vercel.app/star-icon.png',
+                        photo_size: 256,
+                        photo_width: 256,
+                        photo_height: 256
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('Bot API відповідь:', data);
+                
+                if (data.ok) {
+                    this.showNotification('✅ Чек відправлено в Telegram! Перевірте чат з ботом.');
+                } else {
+                    throw new Error(data.description);
+                }
+                
+            } catch (error) {
+                console.error('Помилка Bot API:', error);
+                this.showNotification('❌ Не вдалося створити чек. Спробуйте пізніше.');
+            }
+        }
+    }
+    
+    closePaymentModal() {
+        const modal = document.getElementById('paymentModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+    
+    // Обробка платежу від Telegram WebApp
+    async handlePayment(event) {
+        console.log('💰 Подія оплати отримана:', event);
+        
+        if (!event) {
+            console.error('Пуста подія оплати');
+            return;
+        }
+        
+        // Детальна інформація про подію
+        console.log('Деталі події:', {
+            status: event.status,
+            slug: event.slug,
+            payload: event.payload,
+            amount: event.amount,
+            currency: event.currency
+        });
+        
+        // Обробка різних статусів
+        switch(event.status) {
+            case 'paid':
+                this.processSuccessfulPayment(event);
+                break;
+                
+            case 'failed':
+                this.showNotification('❌ Оплата не вдалася. Спробуйте ще раз.');
+                console.error('Помилка оплати:', event);
+                break;
+                
+            case 'pending':
+                this.showNotification('⏳ Платіж обробляється...');
+                break;
+                
+            case 'cancelled':
+                this.showNotification('🚫 Оплату скасовано');
+                break;
+                
+            default:
+                console.log('Невідомий статус оплати:', event.status);
+                this.showNotification('ℹ️ Статус оплати: ' + event.status);
+        }
+    }
+    
+    // Обробка успішної оплати
+    async processSuccessfulPayment(event) {
+        const amount = this.paymentAmount || event.amount || 100;
+        const payload = event.payload || this.paymentPayload;
+        
+        console.log(`✅ Оплата успішна! Сума: ${amount}, Payload: ${payload}`);
+        
+        // Показуємо завантаження
+        this.showLoading('💫 Завантажуємо зірки...');
+        
+        // Нараховуємо зірки
+        setTimeout(() => {
+            this.balance += amount;
+            this.updateUI();
+            this.saveUserData();
+            this.hideLoading();
+            
+            // Показуємо успіх
+            this.showNotification(`🎉 Успішно! +${amount} Stars зараховано!`);
+            this.createConfetti();
+            
+            // Додаткове сповіщення
+            setTimeout(() => {
+                if (window.Telegram?.WebApp) {
+                    Telegram.WebApp.showAlert(
+                        `✅ Оплата успішна!\n\n` +
+                        `💎 Отримано: ${amount} Telegram Stars\n` +
+                        `💰 Вартість: ~$${(amount * 0.01).toFixed(2)} USD\n` +
+                        `🎮 Новый баланс: ${this.balance} Stars\n\n` +
+                        `Гарної гри! 🎰`
+                    );
+                }
+            }, 300);
+            
+            // Відправляємо сповіщення власнику
+            this.sendPaymentNotification(amount);
+            
+            // Скидаємо дані платежу
+            this.paymentAmount = 0;
+            this.paymentPayload = null;
+            
+        }, 2000);
+    }
+    
+    // Відправка сповіщення власнику
+    async sendPaymentNotification(amount) {
+        if (!this.user || this.isOwner) return;
+        
+        try {
+            const usdAmount = (amount * 0.01).toFixed(2);
+            const message = 
+                `💰 *НОВИЙ ДОНАТ У ГРІ* 🎰\n\n` +
+                `👤 Від: ${this.user.username ? `@${this.user.username}` : `ID: ${this.user.id}`}\n` +
+                `💎 Сума: ${amount} Telegram Stars\n` +
+                `💵 Еквівалент: ~$${usdAmount} USD\n` +
+                `🎮 Гра: Case Roulette\n` +
+                `⏰ Час: ${new Date().toLocaleString('uk-UA')}`;
+            
+            // Відправляємо через Bot API
+            await fetch(`https://api.telegram.org/bot${CONFIG.BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: CONFIG.OWNER_ID,
+                    text: message,
+                    parse_mode: 'Markdown'
+                })
+            });
+            
+            console.log('📢 Сповіщення власнику відправлено');
+            
+        } catch (error) {
+            console.error('Помилка відправки сповіщення:', error);
+        }
+    }
+    
+    // ================== ІНШІ МЕТОДИ ==================
     
     async loadUserData() {
         try {
@@ -90,6 +498,12 @@ class CaseRouletteGame {
                 this.totalWon = 0;
                 this.casesOpened = 0;
                 this.saveUserData();
+                
+                // Показуємо бейдж власника
+                setTimeout(() => {
+                    const ownerBadge = document.getElementById('ownerBadge');
+                    if (ownerBadge) ownerBadge.style.display = 'block';
+                }, 100);
                 return;
             }
             
@@ -101,15 +515,51 @@ class CaseRouletteGame {
                 this.totalWon = data.totalWon || 0;
                 this.casesOpened = data.casesOpened || 0;
             } else {
-                this.balance = 0;
+                this.balance = 10; // Бонус за реєстрацію
+                this.totalWon = 0;
+                this.casesOpened = 0;
                 this.saveUserData();
                 
-                // Відправляємо сповіщення про нового користувача
-                await this.notifyNewUser();
+                // Сповіщення про нового користувача
+                this.sendNewUserNotification();
+                
+                this.showNotification('🎁 Новому користувачу +10 бонусних Stars!');
+                this.updateUI();
             }
             
         } catch (error) {
             console.error('Error loading user data:', error);
+        }
+    }
+    
+    async sendNewUserNotification() {
+        if (!this.user || this.isOwner) return;
+        
+        try {
+            const message = 
+                `🆕 *НОВИЙ КОРИСТУВАЧ У ГРІ* 🎮\n\n` +
+                `👤 ID: ${this.user.id}\n` +
+                `📛 Ім'я: ${this.user.first_name || '-'} ${this.user.last_name || '-'}\n` +
+                `🔗 Юзернейм: @${this.user.username || 'немає'}\n` +
+                `🌐 Мова: ${this.user.language_code || 'немає'}\n` +
+                `🎰 Гра: Case Roulette\n` +
+                `🎁 Бонус: 10 Stars\n` +
+                `📅 Час: ${new Date().toLocaleString('uk-UA')}`;
+            
+            await fetch(`https://api.telegram.org/bot${CONFIG.BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: CONFIG.OWNER_ID,
+                    text: message,
+                    parse_mode: 'Markdown'
+                })
+            });
+            
+            console.log('📢 Сповіщення про нового користувача відправлено');
+            
+        } catch (error) {
+            console.error('Помилка відправки сповіщення:', error);
         }
     }
     
@@ -120,42 +570,24 @@ class CaseRouletteGame {
             balance: this.balance,
             totalWon: this.totalWon,
             casesOpened: this.casesOpened,
-            lastPlayed: new Date().toISOString()
+            lastPlayed: new Date().toISOString(),
+            username: this.user.username
         };
         
         localStorage.setItem(`case_roulette_user_${this.user.id}`, JSON.stringify(data));
     }
     
-    async notifyNewUser() {
-        try {
-            // Відправляємо дані на бекенд про нового користувача
-            const response = await fetch(`${CONFIG.API_URL}/new-user`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: this.user.id,
-                    username: this.user.username,
-                    firstName: this.user.first_name,
-                    lastName: this.user.last_name,
-                    languageCode: this.user.language_code,
-                    isPremium: this.user.is_premium || false
-                })
-            });
-            
-            console.log('New user notification sent');
-        } catch (error) {
-            console.error('Failed to notify about new user:', error);
-        }
-    }
-    
     renderCases() {
         const container = document.getElementById('casesContainer');
+        if (!container) return;
+        
         container.innerHTML = '';
         
         CONFIG.SPECIAL_CASES.forEach(caseItem => {
             const caseElement = document.createElement('div');
             caseElement.className = 'case';
             caseElement.style.setProperty('--case-color', caseItem.color);
+            caseElement.dataset.id = caseItem.id;
             
             caseElement.innerHTML = `
                 <div class="case-icon">${caseItem.icon}</div>
@@ -171,33 +603,8 @@ class CaseRouletteGame {
         });
     }
     
-    renderProbabilities() {
-        const container = document.getElementById('probabilitiesList');
-        container.innerHTML = '';
-        
-        CONFIG.REWARDS.forEach(reward => {
-            const item = document.createElement('div');
-            item.className = 'probability-item';
-            item.innerHTML = `
-                <div>
-                    <span style="font-size: 20px; margin-right: 10px;">${reward.icon}</span>
-                    <span>${reward.stars === 0 ? 'Нічого' : `${reward.stars}x прибуток`}</span>
-                </div>
-                <div style="color: ${reward.color}; font-weight: bold;">
-                    ${(reward.chance * 100).toFixed(1)}%
-                </div>
-            `;
-            container.appendChild(item);
-        });
-    }
-    
-    async openCase(caseItem) {
+    openCase(caseItem) {
         if (this.isSpinning) return;
-        
-        // Для власника - безкоштовно
-        if (this.isOwner) {
-            this.balance += 1000; // Бонуси власнику
-        }
         
         if (this.balance < caseItem.price) {
             this.showNotification(`Недостатньо Stars! Потрібно ${caseItem.price} ⭐`);
@@ -208,9 +615,130 @@ class CaseRouletteGame {
         this.balance -= caseItem.price;
         this.casesOpened++;
         this.saveUserData();
+        this.updateUI();
         
         this.isSpinning = true;
         this.startRoulette(caseItem);
+    }
+    
+    startRoulette(caseItem) {
+        const roulette = document.getElementById('roulette');
+        const rouletteItems = document.getElementById('rouletteItems');
+        
+        if (!roulette || !rouletteItems) return;
+        
+        roulette.style.display = 'block';
+        document.querySelectorAll('.case').forEach(el => {
+            el.style.pointerEvents = 'none';
+            el.style.opacity = '0.5';
+        });
+        
+        // Генеруємо випадковий результат
+        const reward = this.calculateReward(caseItem);
+        this.generateRouletteWithResult(rouletteItems, caseItem, reward.finalStars);
+        
+        const itemWidth = 100;
+        const winningIndex = Math.floor(Math.random() * 30) + 35;
+        const targetPosition = -(winningIndex * itemWidth) + 200;
+        
+        rouletteItems.style.transition = 'none';
+        rouletteItems.style.transform = 'translateX(0)';
+        
+        setTimeout(() => {
+            rouletteItems.style.transition = 'transform 3s cubic-bezier(0.2, 0.8, 0.3, 1)';
+            rouletteItems.style.transform = `translateX(${targetPosition}px)`;
+        }, 50);
+        
+        setTimeout(() => {
+            this.showRouletteResult(reward, caseItem);
+            this.isSpinning = false;
+            roulette.style.display = 'none';
+            
+            document.querySelectorAll('.case').forEach(el => {
+                el.style.pointerEvents = 'auto';
+                el.style.opacity = '1';
+            });
+        }, 3500);
+    }
+    
+    showRouletteResult(reward, caseItem) {
+        const resultOverlay = document.getElementById('resultOverlay');
+        const resultIcon = document.getElementById('resultIcon');
+        const resultText = document.getElementById('resultText');
+        const resultAmount = document.getElementById('resultAmount');
+        
+        if (!resultOverlay || !resultIcon || !resultText || !resultAmount) return;
+        
+        if (reward.finalStars > 0) {
+            this.balance += reward.finalStars;
+            this.totalWon += reward.finalStars;
+            this.createConfetti();
+            
+            resultIcon.textContent = reward.icon;
+            resultIcon.style.color = reward.color;
+            resultText.innerHTML = '🎉 Вітаємо!<br>Ви виграли:';
+            resultAmount.textContent = `${reward.finalStars} ⭐`;
+            resultAmount.style.color = reward.color;
+            
+            if (caseItem.multiplier > 1) {
+                resultText.innerHTML += `<br><small>(Множник: x${caseItem.multiplier})</small>`;
+            }
+            
+            this.showNotification(`🎊 Ви виграли ${reward.finalStars} Stars!`);
+        } else {
+            resultIcon.textContent = '💨';
+            resultIcon.style.color = '#95A5A6';
+            resultText.textContent = '😔 Наступного разу пощастить!';
+            resultAmount.textContent = '0 ⭐';
+            resultAmount.style.color = '#95A5A6';
+            
+            this.showNotification('💪 Спробуйте ще раз!');
+        }
+        
+        this.updateUI();
+        this.saveUserData();
+        resultOverlay.style.display = 'flex';
+    }
+    
+    generateRouletteWithResult(container, caseItem, winAmount) {
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        // Створюємо 50 елементів
+        for (let i = 0; i < 50; i++) {
+            const item = document.createElement('div');
+            item.className = 'roulette-item';
+            
+            // Генеруємо випадкову нагороду
+            const random = Math.random();
+            let rewardType;
+            let accumulatedChance = 0;
+            
+            for (const reward of CONFIG.REWARDS) {
+                accumulatedChance += reward.chance;
+                if (random <= accumulatedChance) {
+                    rewardType = reward;
+                    break;
+                }
+            }
+            
+            if (!rewardType) rewardType = CONFIG.REWARDS[CONFIG.REWARDS.length - 1];
+            
+            // Якщо це позиція виграшу, показуємо виграшну суму
+            const displayAmount = (i === 25) ? winAmount : (rewardType.stars * caseItem.multiplier);
+            
+            item.innerHTML = `
+                <div class="roulette-item-icon" style="color: ${rewardType.color}">
+                    ${rewardType.icon}
+                </div>
+                <div class="roulette-item-amount">
+                    ${displayAmount}
+                </div>
+            `;
+            
+            container.appendChild(item);
+        }
     }
     
     calculateReward(caseItem) {
@@ -235,410 +763,10 @@ class CaseRouletteGame {
         };
     }
     
-    startRoulette(caseItem) {
-        const roulette = document.getElementById('roulette');
-        const rouletteItems = document.getElementById('rouletteItems');
-        
-        roulette.style.display = 'block';
-        document.querySelectorAll('.case').forEach(el => {
-            el.style.pointerEvents = 'none';
-            el.style.opacity = '0.5';
-        });
-        
-        this.generateRouletteItems(rouletteItems, caseItem);
-        
-        const reward = this.calculateReward(caseItem);
-        
-        const itemWidth = 100;
-        const totalItems = 100;
-        const winningIndex = Math.floor(Math.random() * 30) + 35;
-        const targetPosition = -(winningIndex * itemWidth) + 200;
-        
-        rouletteItems.style.transition = 'none';
-        rouletteItems.style.transform = 'translateX(0)';
-        
-        setTimeout(() => {
-            rouletteItems.style.transition = 'transform 3s cubic-bezier(0.2, 0.8, 0.3, 1)';
-            rouletteItems.style.transform = `translateX(${targetPosition}px)`;
-        }, 50);
-        
-        setTimeout(() => {
-            this.showResult(reward, caseItem);
-            this.isSpinning = false;
-            roulette.style.display = 'none';
-            
-            document.querySelectorAll('.case').forEach(el => {
-                el.style.pointerEvents = 'auto';
-                el.style.opacity = '1';
-            });
-        }, 3500);
-    }
-    
-    generateRouletteItems(container, caseItem) {
-        container.innerHTML = '';
-        
-        for (let i = 0; i < 100; i++) {
-            const item = document.createElement('div');
-            item.className = 'roulette-item';
-            
-            const random = Math.random();
-            let rewardType;
-            let accumulatedChance = 0;
-            
-            for (const reward of CONFIG.REWARDS) {
-                accumulatedChance += reward.chance;
-                if (random <= accumulatedChance) {
-                    rewardType = reward;
-                    break;
-                }
-            }
-            
-            if (!rewardType) rewardType = CONFIG.REWARDS[CONFIG.REWARDS.length - 1];
-            
-            item.innerHTML = `
-                <div class="roulette-item-icon" style="color: ${rewardType.color}">
-                    ${rewardType.icon}
-                </div>
-                <div class="roulette-item-amount">
-                    ${rewardType.stars * caseItem.multiplier}
-                </div>
-            `;
-            
-            container.appendChild(item);
-        }
-    }
-    
-    showResult(reward, caseItem) {
-        const resultOverlay = document.getElementById('resultOverlay');
-        const resultIcon = document.getElementById('resultIcon');
-        const resultText = document.getElementById('resultText');
-        const resultAmount = document.getElementById('resultAmount');
-        
-        if (reward.finalStars > 0) {
-            this.balance += reward.finalStars;
-            this.totalWon += reward.finalStars;
-            this.createConfetti();
-        }
-        
-        this.updateUI();
-        this.saveUserData();
-        
-        if (reward.finalStars > 0) {
-            resultIcon.textContent = reward.icon;
-            resultIcon.style.color = reward.color;
-            resultText.textContent = '🎉 Вітаємо! Ви виграли:';
-            resultAmount.textContent = `${reward.finalStars} ⭐`;
-            resultAmount.style.color = reward.color;
-            
-            if (caseItem.multiplier > 1) {
-                resultText.innerHTML += `<br><small>(Множник: x${caseItem.multiplier})</small>`;
-            }
-            
-            this.showNotification(`Ви виграли ${reward.finalStars} Stars! 🎉`);
-        } else {
-            resultIcon.textContent = '💨';
-            resultIcon.style.color = '#95A5A6';
-            resultText.textContent = '😔 Наступного разу пощастить!';
-            resultAmount.textContent = '0 ⭐';
-            resultAmount.style.color = '#95A5A6';
-            
-            this.showNotification('Спробуйте ще раз! 💪');
-        }
-        
-        resultOverlay.style.display = 'flex';
-    }
-    
-    closeResult() {
-        const resultOverlay = document.getElementById('resultOverlay');
-        resultOverlay.style.display = 'none';
-    }
-    
-    shareResult() {
-        if (window.Telegram?.WebApp) {
-            const shareText = `Я виграв ${this.totalWon} Stars у Case Roulette! Спробуй і ти! 🎰`;
-            Telegram.WebApp.share(shareText);
-        } else {
-            this.showNotification('Скопійовано в буфер обміну!');
-            navigator.clipboard.writeText(`Я граю в Case Roulette! Спробуй і ти! 🎰`);
-        }
-    }
-    
-    showStats() {
-        const stats = `
-            📊 Ваша статистика:
-            
-            Баланс: ${this.balance} ⭐
-            Відкрито кейсів: ${this.casesOpened}
-            Виграно всього: ${this.totalWon} ⭐
-            Середній виграш: ${this.casesOpened > 0 ? (this.totalWon / this.casesOpened).toFixed(1) : 0} ⭐
-            
-            Удачі в наступних іграх! 🍀
-        `;
-        
-        alert(stats);
-    }
-    
-    // ПОПОВНЕННЯ БАЛАНСУ
-    showPaymentModal() {
-        const modal = document.createElement('div');
-        modal.id = 'paymentModal';
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-        `;
-        
-        modal.innerHTML = `
-            <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                       padding: 30px;
-                       border-radius: 20px;
-                       width: 90%;
-                       max-width: 400px;
-                       border: 2px solid rgba(255,255,255,0.1);">
-                <h2 style="text-align: center; margin-bottom: 20px; color: #ffd700;">
-                    💰 Поповнення балансу
-                </h2>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 10px; opacity: 0.8;">
-                        Скільки Stars ви хочете внести?
-                    </label>
-                    <input type="number" id="starsAmount" 
-                           min="1" max="10000" value="100"
-                           style="width: 100%;
-                                  padding: 15px;
-                                  border: 2px solid rgba(255,255,255,0.2);
-                                  background: rgba(0,0,0,0.5);
-                                  color: white;
-                                  border-radius: 10px;
-                                  font-size: 18px;
-                                  text-align: center;">
-                    <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <button onclick="setAmount(50)" style="flex:1; padding: 10px; background: #667eea; border: none; color: white; border-radius: 5px;">50</button>
-                        <button onclick="setAmount(100)" style="flex:1; padding: 10px; background: #667eea; border: none; color: white; border-radius: 5px;">100</button>
-                        <button onclick="setAmount(500)" style="flex:1; padding: 10px; background: #667eea; border: none; color: white; border-radius: 5px;">500</button>
-                        <button onclick="setAmount(1000)" style="flex:1; padding: 10px; background: #667eea; border: none; color: white; border-radius: 5px;">1000</button>
-                    </div>
-                </div>
-                
-                <div style="text-align: center; margin: 20px 0; padding: 15px; background: rgba(255,215,0,0.1); border-radius: 10px;">
-                    <div style="font-size: 14px; opacity: 0.8;">Приблизно:</div>
-                    <div style="font-size: 24px; font-weight: bold; color: #ffd700;">
-                        <span id="usdAmount">~$1.00</span> USD
-                    </div>
-                    <div style="font-size: 12px; opacity: 0.6; margin-top: 5px;">
-                        1 Star ≈ $0.01
-                    </div>
-                </div>
-                
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="window.game.processPayment()" 
-                            style="flex: 1; 
-                                   padding: 15px; 
-                                   background: linear-gradient(45deg, #4CAF50, #8BC34A);
-                                   border: none; 
-                                   color: white; 
-                                   border-radius: 10px; 
-                                   font-size: 16px; 
-                                   font-weight: bold;
-                                   cursor: pointer;">
-                        💳 Оплатити
-                    </button>
-                    <button onclick="window.game.closePaymentModal()" 
-                            style="flex: 1; 
-                                   padding: 15px; 
-                                   background: rgba(255,255,255,0.1);
-                                   border: none; 
-                                   color: white; 
-                                   border-radius: 10px; 
-                                   font-size: 16px;
-                                   cursor: pointer;">
-                        Скасувати
-                    </button>
-                </div>
-                
-                <div style="margin-top: 20px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; font-size: 12px; opacity: 0.6;">
-                    ⚡ Після оплати зірки автоматично з'являться у грі
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        
-        // Оновлюємо USD еквівалент
-        const starsInput = document.getElementById('starsAmount');
-        const usdAmount = document.getElementById('usdAmount');
-        
-        starsInput.addEventListener('input', function() {
-            const stars = parseInt(this.value) || 0;
-            const usd = (stars * 0.01).toFixed(2);
-            usdAmount.textContent = `~$${usd}`;
-        });
-        
-        // Початкове значення
-        const initialStars = parseInt(starsInput.value);
-        const initialUsd = (initialStars * 0.01).toFixed(2);
-        usdAmount.textContent = `~$${initialUsd}`;
-    }
-    
-    closePaymentModal() {
-        const modal = document.getElementById('paymentModal');
-        if (modal) {
-            modal.remove();
-        }
-    }
-    
-    // Процес оплати
-    async processPayment() {
-        const starsInput = document.getElementById('starsAmount');
-        const amount = parseInt(starsInput.value);
-        
-        if (!amount || amount < 1) {
-            this.showNotification('Введіть коректну суму!');
-            return;
-        }
-        
-        if (amount > 10000) {
-            this.showNotification('Максимальна сума: 10,000 Stars');
-            return;
-        }
-        
-        this.closePaymentModal();
-        this.showLoading('Створення платежу...');
-        
-        // Для власника - безкоштовне поповнення
-        if (this.isOwner) {
-            setTimeout(() => {
-                this.balance += amount;
-                this.updateUI();
-                this.saveUserData();
-                this.hideLoading();
-                this.showNotification(`🎉 Отримано ${amount} Stars! (Власник)`);
-                this.createConfetti();
-            }, 1000);
-            return;
-        }
-        
-        // Реальний платіж через Telegram Stars
-        if (window.Telegram?.WebApp) {
-            try {
-                // Створюємо платіж у Telegram
-                Telegram.WebApp.openInvoice({
-                    title: 'Поповнення балансу',
-                    description: `Донат на ${amount} Stars для гри Case Roulette`,
-                    currency: 'XTR', // Telegram Stars
-                    prices: [{ label: `${amount} Stars`, amount: amount }],
-                    payload: `payment_${this.user.id}_${Date.now()}`,
-                    photo_url: 'https://xstgifts.vercel.app/star-icon.png'
-                });
-                
-                // Зберігаємо суму для подальшої обробки
-                this.paymentAmount = amount;
-                
-            } catch (error) {
-                console.error('Payment error:', error);
-                this.showNotification('❌ Помилка створення платежу');
-            }
-        } else {
-            // Демо-режим
-            setTimeout(() => {
-                this.balance += amount;
-                this.updateUI();
-                this.saveUserData();
-                this.hideLoading();
-                this.showNotification(`🎉 Демо: отримано ${amount} Stars!`);
-                this.createConfetti();
-            }, 1500);
-        }
-        
-        this.hideLoading();
-    }
-    
-    // Обробка платежу від Telegram
-    async handlePayment(event) {
-        console.log('Payment event:', event);
-        
-        if (event.status === 'paid') {
-            // Платіж успішний
-            const amount = this.paymentAmount || event.amount || 100;
-            
-            // Нараховуємо зірки
-            this.balance += amount;
-            this.updateUI();
-            this.saveUserData();
-            
-            // Сповіщення
-            this.showNotification(`🎉 Успішно! +${amount} Stars на балансі!`);
-            this.createConfetti();
-            
-            // Відправляємо дані про платіж на бекенд
-            await this.sendPaymentToBackend(amount);
-            
-            // Сповіщення власнику про донат
-            await this.notifyOwnerAboutDonation(amount);
-            
-        } else if (event.status === 'failed') {
-            this.showNotification('❌ Оплата не пройшла. Спробуйте ще раз.');
-        } else if (event.status === 'pending') {
-            this.showNotification('⏳ Платіж обробляється...');
-        } else if (event.status === 'cancelled') {
-            this.showNotification('🚫 Оплату скасовано');
-        }
-    }
-    
-    async sendPaymentToBackend(amount) {
-        try {
-            const response = await fetch(`${CONFIG.API_URL}/payment`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: this.user.id,
-                    username: this.user.username,
-                    amount: amount,
-                    type: 'donation',
-                    timestamp: new Date().toISOString()
-                })
-            });
-            
-            console.log('Payment data sent to backend');
-        } catch (error) {
-            console.error('Failed to send payment data:', error);
-        }
-    }
-    
-    async notifyOwnerAboutDonation(amount) {
-        try {
-            // Відправляємо повідомлення власнику про донат
-            const response = await fetch(`${CONFIG.API_URL}/notify-donation`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    fromUserId: this.user.id,
-                    fromUsername: this.user.username,
-                    amount: amount,
-                    timestamp: new Date().toISOString()
-                })
-            });
-            
-            console.log('Donation notification sent to owner');
-        } catch (error) {
-            console.error('Failed to notify owner:', error);
-        }
-    }
-    
     updateUI() {
         const balanceElement = document.getElementById('balance');
         if (balanceElement) {
             balanceElement.textContent = this.balance;
-            
-            // Якщо це власник - додаємо корону
             if (this.isOwner) {
                 balanceElement.innerHTML = `👑 ${this.balance}`;
             }
@@ -665,9 +793,10 @@ class CaseRouletteGame {
             confetti.style.fontSize = Math.random() * 20 + 10 + 'px';
             confetti.style.left = Math.random() * 100 + 'vw';
             confetti.style.top = '-50px';
-            confetti.style.opacity = '0.8';
+            confetti.style.opacity = '0.9';
             confetti.style.zIndex = '9999';
             confetti.style.pointerEvents = 'none';
+            confetti.style.textShadow = '0 0 5px rgba(255,255,255,0.5)';
             
             document.body.appendChild(confetti);
             
@@ -689,18 +818,10 @@ class CaseRouletteGame {
         }
     }
     
-    showProbabilities() {
-        const modal = document.getElementById('probabilitiesModal');
-        modal.style.display = 'flex';
-    }
-    
-    hideProbabilities() {
-        const modal = document.getElementById('probabilitiesModal');
-        modal.style.display = 'none';
-    }
-    
     showNotification(message) {
         const notification = document.getElementById('notification');
+        if (!notification) return;
+        
         notification.textContent = message;
         notification.classList.add('show');
         
@@ -713,17 +834,70 @@ class CaseRouletteGame {
         const loading = document.getElementById('loading');
         const loadingText = document.getElementById('loadingText');
         
+        if (!loading || !loadingText) return;
+        
         loadingText.textContent = text || 'Завантаження...';
         loading.style.display = 'flex';
     }
     
     hideLoading() {
         const loading = document.getElementById('loading');
-        loading.style.display = 'none';
+        if (loading) {
+            loading.style.display = 'none';
+        }
+    }
+    
+    // Функції для власника
+    addStars(amount) {
+        if (!this.isOwner) return;
+        
+        this.balance += amount;
+        this.updateUI();
+        this.saveUserData();
+        this.showNotification(`👑 Власнику додано ${amount} Stars!`);
+        this.createConfetti();
+        
+        const menu = document.getElementById('ownerMenu');
+        if (menu) menu.classList.remove('show');
+    }
+    
+    resetStats() {
+        if (!this.isOwner) return;
+        
+        if (window.Telegram?.WebApp && Telegram.WebApp.showConfirm) {
+            Telegram.WebApp.showConfirm(
+                'Скинути всю статистику гри?',
+                'Ця дія видалить всі дані користувачів.',
+                (confirmed) => {
+                    if (confirmed) {
+                        localStorage.clear();
+                        this.balance = 999999;
+                        this.totalWon = 0;
+                        this.casesOpened = 0;
+                        this.updateUI();
+                        this.showNotification('📊 Статистику скинуто!');
+                        
+                        const menu = document.getElementById('ownerMenu');
+                        if (menu) menu.classList.remove('show');
+                    }
+                }
+            );
+        } else if (confirm('Скинути всю статистику гри?')) {
+            localStorage.clear();
+            this.balance = 999999;
+            this.totalWon = 0;
+            this.casesOpened = 0;
+            this.updateUI();
+            this.showNotification('📊 Статистику скинуто!');
+            
+            const menu = document.getElementById('ownerMenu');
+            if (menu) menu.classList.remove('show');
+        }
     }
 }
 
-// Глобальні функції
+// ================== ГЛОБАЛЬНІ ФУНКЦІЇ ==================
+
 let game;
 
 function initGame() {
@@ -754,17 +928,32 @@ function hideProbabilities() {
     if (game) game.hideProbabilities();
 }
 
-function setAmount(amount) {
+function setPaymentAmount(amount) {
     const input = document.getElementById('starsAmount');
     if (input) {
         input.value = amount;
-        
-        // Тригер події для оновлення USD
-        const event = new Event('input');
+        const event = new Event('input', { bubbles: true });
         input.dispatchEvent(event);
+    }
+}
+
+function toggleOwnerMenu() {
+    const menu = document.getElementById('ownerMenu');
+    if (menu) {
+        menu.classList.toggle('show');
     }
 }
 
 // Запуск гри
 window.addEventListener('DOMContentLoaded', initGame);
+
+// Експорт для глобального використання
 window.CaseRouletteGame = CaseRouletteGame;
+window.closeResult = closeResult;
+window.shareResult = shareResult;
+window.buyStars = buyStars;
+window.showStats = showStats;
+window.showProbabilities = showProbabilities;
+window.hideProbabilities = hideProbabilities;
+window.setPaymentAmount = setPaymentAmount;
+window.toggleOwnerMenu = toggleOwnerMenu;
